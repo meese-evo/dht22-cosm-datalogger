@@ -1,5 +1,6 @@
 CC = g++
-CFLAGS =  -std=c99 -I. -lbcm2835 -lcurl
+#CFLAGS =  -std=c99 -I. -lbcm2835 -lcurl
+CFLAGS =  -I. -lbcm2835 -lcurl
 DEPS = 
 OBJ = dht_logger.o
 

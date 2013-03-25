@@ -38,14 +38,13 @@
 #define PIN_DHT 4 //GPIO Mapping DHT Sensor
 #define PIN_LED RPI_GPIO_P1_12 //GPIO Mapping LED
 
-#define FEEDID YOUR_ID
-#define KEY "YOUR_KEY"
-
 using namespace std;
 
 int readDHT(int type, int pin, float *humid0, float *temp0);
 
-int cosimput(float *humid0, float *temp0);
+int cosmput(float *humid0, float *temp0, int *feedid, char *key, char *feed_name);
+
+int readconfig(char *pFileName, int *feedid, char *key, char *feed_name);
 
 int main(int argc, char **argv) {
 
@@ -54,6 +53,13 @@ int main(int argc, char **argv) {
 	int ledpin = PIN_LED;
 	int j = 0;
 	float humid0, temp0;
+	
+	int feedid = 0;
+        char key[100];
+        char feed_name[100];
+
+	char pFileName[]="config.ini";
+	readconfig(pFileName, &feedid, key, feed_name);
 
 	if (!bcm2835_init())
 		return 1;
@@ -66,7 +72,7 @@ int main(int argc, char **argv) {
 	while(j < 10) {
 		cout << j+1 << endl;
 		readDHT(type, dhtpin, &humid0, &temp0);
-		cosimput(&humid0, &temp0);
+		cosmput(&humid0, &temp0, &feedid, key, feed_name);
 		printf("Temp: %0.1f Humid: %0.1f\n", temp0, humid0);
 		sleep(5);
 		temp0 = humid0 = 0.0;
@@ -163,21 +169,17 @@ int readDHT(int type, int pin, float *humid0, float *temp0) {
   return 0;
 }
 
-int cosimput(float *humid0, float *temp0) {
+int cosmput(float *humid0, float *temp0, int *feedid, char *key, char *feed_name) {
 
 	CURL *curl;
-
-	int feedid = FEEDID;
-	char key[] = KEY;
-	char 
 
 	char xapikey[60];
 	sprintf(xapikey, "X-ApiKey: %s",key);
 	char url[50];
-	sprintf(url, "http://api.cosm.com/v2/feeds/%d.json", feedid);
+	sprintf(url, "http://api.cosm.com/v2/feeds/%d.json", *feedid);
 	
 	char payload[160];
-	sprintf(payload, "{\"title\":\"tehu_logger\",\"version\":\"1.0.0\",\"datastreams\":[{\"id\":\"humid0\",\"current_value\":%0.1f},{\"id\":\"temp0\",\"current_value\":%0.1f}]}", *humid0, *temp0);
+	sprintf(payload, "{\"title\":\"%s\",\"version\":\"1.0.0\",\"datastreams\":[{\"id\":\"humid0\",\"current_value\":%0.1f},{\"id\":\"temp0\",\"current_value\":%0.1f}]}", feed_name, *humid0, *temp0);
 
 	struct curl_slist *header=NULL;
 	header = curl_slist_append(header, xapikey);
@@ -198,5 +200,37 @@ int cosimput(float *humid0, float *temp0) {
 
 	curl_slist_free_all(header);
 	curl_global_cleanup();
+	return 0;
+}
+
+int readconfig(char *pFileName, int *feedid, char *key, char *feed_name) {
+	char buffer[1024];
+	char label[120];
+	char value[100];
+	int allread = 0;
+
+	FILE* fp;
+	fp = fopen(pFileName, "r");
+	if (!fp) {
+		printf("Error opening config_file %s!\n", pFileName);
+		return 1;
+	}
+	printf("Opening config file: %s\n", pFileName);
+	fflush(stdout);
+	while (feof(fp) == 0) {
+		fgets(buffer, 1024, fp);
+		if ((buffer[0] != '#')) // && (no>2))
+		{
+			if (sscanf(buffer, "%[^'=']=%[^'\n']%s", &label, &value) >= 2){
+				if (strcmp(label, "FEEDID") == 0)
+					*feedid = atoi(value);
+				if (strcmp(label, "KEY") == 0)
+					sprintf(key, "%s", value);
+				if (strcmp(label, "FEED_NAME") == 0) 
+					sprintf(feed_name, "%s", value);
+			}
+		}
+	}
+	fclose(fp);
 	return 0;
 }
