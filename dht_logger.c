@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
 		readDHT(type, dhtpin, &humid0, &temp0);
 		cosmput(&humid0, &temp0, &feedid, key, feed_name);
 		printf("Temp: %0.1f Humid: %0.1f\n", temp0, humid0);
-		sleep(5);
+		sleep(1);
 	}
 	
 	bcm2835_gpio_fsel(ledpin, BCM2835_GPIO_FSEL_OUTP);
