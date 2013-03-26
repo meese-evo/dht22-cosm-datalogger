@@ -143,6 +143,7 @@ int readDHT(int type, int pin, float *humid0, float *temp0) {
 int cosmput(float *humid0, float *temp0, int *feedid, char *key, char *feed_name) {
 
 	CURL *curl;
+	CURLcode res;
 
 	char xapikey[60];
 	sprintf(xapikey, "X-ApiKey: %s",key);
@@ -164,11 +165,12 @@ int cosmput(float *humid0, float *temp0, int *feedid, char *key, char *feed_name
 	curl_easy_setopt(curl, CURLOPT_URL, url);
 	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
 
-	CURLcode res = curl_easy_perform(curl);
-	if (res != 0) {
-		cout << "result " << res << endl;
+	res = curl_easy_perform(curl);
+	if(res != CURLE_OK) {
+      		fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
 	}
 
+	curl_easy_cleanup(curl);
 	curl_slist_free_all(header);
 	curl_global_cleanup();
 	return 0;
