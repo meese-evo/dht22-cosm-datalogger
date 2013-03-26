@@ -52,6 +52,7 @@ int main(int argc, char **argv) {
 	int dhtpin = PIN_DHT;
 	int ledpin = PIN_LED;
 	int j = 0;
+	int cin = 0;
 	float humid0, temp0;
 	
 	int feedid = 0;
@@ -70,12 +71,12 @@ int main(int argc, char **argv) {
 	printf("Using pin #%d\n", dhtpin);
 	
 	while(j < 10) {
-		cout << j+1 << endl;
+		cin >> cin;
+		cout << cin << endl;
 		readDHT(type, dhtpin, &humid0, &temp0);
 		cosmput(&humid0, &temp0, &feedid, key, feed_name);
 		printf("Temp: %0.1f Humid: %0.1f\n", temp0, humid0);
 		sleep(5);
-		temp0 = humid0 = 0.0;
 		j++;
 	}
 	
@@ -86,87 +87,85 @@ int main(int argc, char **argv) {
 
 } // main
 
-
-int bits[250], data[100];
-int bitidx = 0;
-
 int readDHT(int type, int pin, float *humid0, float *temp0) {
-  int counter = 0;
-  int laststate = HIGH;
-  int j=0;
+	int counter = 0;
+	int laststate = HIGH;
+	int j=0;
 
-  // Set GPIO pin to output
-  bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_OUTP);
+	int bits[250], data[100];
+	int bitidx = 0;
 
-  bcm2835_gpio_write(pin, HIGH);
-  usleep(500000);  // 500 ms
-  bcm2835_gpio_write(pin, LOW);
-  usleep(20000);
+  	// Set GPIO pin to output
+  	bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_OUTP);
 
-  bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_INPT);
+  	bcm2835_gpio_write(pin, HIGH);
+  	usleep(500000);  // 500 ms
+ 	bcm2835_gpio_write(pin, LOW);
+  	usleep(20000);
 
-  data[0] = data[1] = data[2] = data[3] = data[4] = 0;
+  	bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_INPT);
 
-  // wait for pin to drop?
-  while (bcm2835_gpio_lev(pin) == 1) {
-    usleep(1);
-  }
+  	data[0] = data[1] = data[2] = data[3] = data[4] = 0;
 
-  // read data!
-  for (int i=0; i< MAXTIMINGS; i++) {
-    counter = 0;
-    while ( bcm2835_gpio_lev(pin) == laststate) {
-	counter++;
-	//nanosleep(1);		// overclocking might change this?
-        if (counter == 1000)
-	  break;
-    }
-    laststate = bcm2835_gpio_lev(pin);
-    if (counter == 1000) break;
-    bits[bitidx++] = counter;
+  	// wait for pin to drop?
+  	while (bcm2835_gpio_lev(pin) == 1) {
+    		usleep(1);
+  	}
 
-    if ((i>3) && (i%2 == 0)) {
-      // shove each bit into the storage bytes
-      data[j/8] <<= 1;
-      if (counter > 200)
-        data[j/8] |= 1;
-      j++;
-    }
-  }
+  	// read data!
+  	for (int i=0; i< MAXTIMINGS; i++) {
+    	counter = 0;
+    	while ( bcm2835_gpio_lev(pin) == laststate) {
+		counter++;
+		//nanosleep(1);		// overclocking might change this?
+        	if (counter == 1000)
+	  		break;
+    		}
+    		
+		laststate = bcm2835_gpio_lev(pin);
+    		if (counter == 1000) break;
+   		bits[bitidx++] = counter;
+
+    		if ((i>3) && (i%2 == 0)) {
+      			// shove each bit into the storage bytes
+      			data[j/8] <<= 1;
+      			if (counter > 200)
+        			data[j/8] |= 1;
+      			j++;
+    		}
+	}
 
 
 #ifdef DEBUG
-  for (int i=3; i<bitidx; i+=2) {
-    printf("bit %d: %d\n", i-3, bits[i]);
-    printf("bit %d: %d (%d)\n", i-2, bits[i+1], bits[i+1] > 200);
-  }
+	for (int i=3; i<bitidx; i+=2) {
+		printf("bit %d: %d\n", i-3, bits[i]);
+    		printf("bit %d: %d (%d)\n", i-2, bits[i+1], bits[i+1] > 200);
+  	}
 #endif
 
-  printf("Data (%d): 0x%x 0x%x 0x%x 0x%x 0x%x\n", j, data[0], data[1], data[2], data[3], data[4]);
+  	printf("Data (%d): 0x%x 0x%x 0x%x 0x%x 0x%x\n", j, data[0], data[1], data[2], data[3], data[4]);
 
-  if ((j >= 39) &&
-      (data[4] == ((data[0] + data[1] + data[2] + data[3]) & 0xFF)) ) {
-     // yay!
-     if (type == DHT11)
-	printf("Temp = %d *C, Hum = %d \%\n", data[2], data[0]);
-     if (type == DHT22) {
-	float f, h;
-	h = data[0] * 256 + data[1];
-	h /= 10;
+  	if ((j >= 39) && (data[4] == ((data[0] + data[1] + data[2] + data[3]) & 0xFF)) ) {	// yay!
+     		if (type == DHT11)
+			printf("Temp = %d *C, Hum = %d \%\n", data[2], data[0]);
+     		if (type == DHT22) {
+			float f, h;
+			h = data[0] * 256 + data[1];
+			h /= 10;
 
-	f = (data[2] & 0x7F)* 256 + data[3];
-        f /= 10.0;
-        if (data[2] & 0x80)  f *= -1;
-	printf("Temp =  %.1f *C, Hum = %.1f \%\n", f, h);
+			f = (data[2] & 0x7F)* 256 + data[3];
+        		f /= 10.0;
+        		if (data[2] & 0x80)  f *= -1;
+			printf("Temp =  %.1f *C, Hum = %.1f \%\n", f, h);
 	
-	*humid0 = h;
-	*temp0 = f;
-    }
+			*humid0 = h;
+			*temp0 = f;
+   	 	}	
     
-    return 1;
-  }
+    	return 1;
+  	}
 
-  return 0;
+  	return 0;
 }
 
 int cosmput(float *humid0, float *temp0, int *feedid, char *key, char *feed_name) {
