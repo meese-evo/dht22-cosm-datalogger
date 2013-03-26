@@ -31,9 +31,7 @@
 
 //#define DEBUG
 
-#define DHT11 11
 #define DHT22 22
-#define AM2302 22
 
 #define PIN_DHT 4 //GPIO Mapping DHT Sensor
 #define PIN_LED RPI_GPIO_P1_12 //GPIO Mapping LED
@@ -51,8 +49,6 @@ int main(int argc, char **argv) {
 	int type = DHT22;
 	int dhtpin = PIN_DHT;
 	int ledpin = PIN_LED;
-	int j = 0;
-	int cin = 0;
 	float humid0, temp0;
 	
 	int feedid = 0;
@@ -70,21 +66,17 @@ int main(int argc, char **argv) {
 	
 	printf("Using pin #%d\n", dhtpin);
 	
-	while(j < 10) {
-		cin >> cin;
-		cout << cin << endl;
+	while(1) {
 		readDHT(type, dhtpin, &humid0, &temp0);
 		cosmput(&humid0, &temp0, &feedid, key, feed_name);
 		printf("Temp: %0.1f Humid: %0.1f\n", temp0, humid0);
 		sleep(5);
-		j++;
 	}
 	
 	bcm2835_gpio_fsel(ledpin, BCM2835_GPIO_FSEL_OUTP);
 	bcm2835_gpio_write(ledpin, LOW); //LED aus
 	
 	return 0;
-
 } // main
 
 int readDHT(int type, int pin, float *humid0, float *temp0) {
@@ -114,12 +106,12 @@ int readDHT(int type, int pin, float *humid0, float *temp0) {
 
   	// read data!
   	for (int i=0; i< MAXTIMINGS; i++) {
-    	counter = 0;
-    	while ( bcm2835_gpio_lev(pin) == laststate) {
-		counter++;
-		//nanosleep(1);		// overclocking might change this?
-        	if (counter == 1000)
-	  		break;
+	    	counter = 0;
+    		while ( bcm2835_gpio_lev(pin) == laststate) {
+			counter++;
+			//nanosleep(1);		// overclocking might change this?
+	        	if (counter == 1000)
+		  		break;
     		}
     		
 		laststate = bcm2835_gpio_lev(pin);
@@ -146,25 +138,20 @@ int readDHT(int type, int pin, float *humid0, float *temp0) {
   	printf("Data (%d): 0x%x 0x%x 0x%x 0x%x 0x%x\n", j, data[0], data[1], data[2], data[3], data[4]);
 
   	if ((j >= 39) && (data[4] == ((data[0] + data[1] + data[2] + data[3]) & 0xFF)) ) {	// yay!
-     		if (type == DHT11)
-			printf("Temp = %d *C, Hum = %d \%\n", data[2], data[0]);
-     		if (type == DHT22) {
-			float f, h;
-			h = data[0] * 256 + data[1];
-			h /= 10;
+		float f, h;
+		h = data[0] * 256 + data[1];
+		h /= 10;
 
-			f = (data[2] & 0x7F)* 256 + data[3];
-        		f /= 10.0;
-        		if (data[2] & 0x80)  f *= -1;
-			printf("Temp =  %.1f *C, Hum = %.1f \%\n", f, h);
+		f = (data[2] & 0x7F)* 256 + data[3];
+        	f /= 10.0;
+        	if (data[2] & 0x80) {
+			f *= -1;
+		}
+		//printf("Temp =  %.1f *C, Hum = %.1f \%\n", f, h);
 	
-			*humid0 = h;
-			*temp0 = f;
-   	 	}	
-    
-    	return 1;
-  	}
-
+		*humid0 = h;
+		*temp0 = f;
+	}	
   	return 0;
 }
 
