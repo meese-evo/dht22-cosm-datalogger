@@ -23,15 +23,14 @@
 
 using namespace std;
 
-int readDHT(int type, int pin, float *humid0, float *temp0);
+int readDHT(int pin, float *humid0, float *temp0);
 
 int cosmput(float *humid0, float *temp0, int *feedid, char *key, char *feed_name);
 
 int readconfig(char *pFileName, int *feedid, char *key, char *feed_name);
 
 int main(int argc, char **argv) {
-
-	int type = DHT22;
+	
 	int dhtpin = PIN_DHT;
 	int ledpin = PIN_LED;
 	float humid0, temp0;
@@ -52,7 +51,7 @@ int main(int argc, char **argv) {
 	printf("Using pin #%d\n", dhtpin);
 	
 	while(1) {
-		readDHT(type, dhtpin, &humid0, &temp0);
+		readDHT(dhtpin, &humid0, &temp0);
 		cosmput(&humid0, &temp0, &feedid, key, feed_name);
 		printf("Temp: %0.1f Humid: %0.1f\n", temp0, humid0);
 		sleep(1);
@@ -64,7 +63,7 @@ int main(int argc, char **argv) {
 	return 0;
 } // main
 
-int readDHT(int type, int pin, float *humid0, float *temp0) {
+int readDHT(int pin, float *humid0, float *temp0) {
 	int counter = 0;
 	int laststate = HIGH;
 	int j=0;
