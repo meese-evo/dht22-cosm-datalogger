@@ -1,16 +1,3 @@
-//  How to access GPIO registers from C-code on the Raspberry-Pi
-//  Example program
-//  15-January-2012
-//  Dom and Gert
-//
-
-
-// Access from ARM Running Linux
-
-#define BCM2708_PERI_BASE        0x20000000
-#define GPIO_BASE                (BCM2708_PERI_BASE + 0x200000) /* GPIO controller */
-
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -27,14 +14,12 @@
 #include <iostream>
 #include <curl/curl.h>
 
+#define BCM2708_PERI_BASE        0x20000000
+#define GPIO_BASE                (BCM2708_PERI_BASE + 0x200000) /* GPIO controller */
 #define MAXTIMINGS 100
-
-//#define DEBUG
-
-#define DHT22 22
-
 #define PIN_DHT 4 //GPIO Mapping DHT Sensor
 #define PIN_LED RPI_GPIO_P1_12 //GPIO Mapping LED
+//#define DEBUG
 
 using namespace std;
 
