@@ -25,22 +25,24 @@ using namespace std;
 
 int readDHT(int pin, float *humid0, float *temp0);
 
-int cosmput(float *humid0, float *temp0, int *feedid, char *key, char *feed_name);
+int cosmput(float humid, float temp, int *feedid, char *key, char *feed_name, char *field0_name, char *field1_name);
 
-int readconfig(char *pFileName, int *feedid, char *key, char *feed_name);
+int readconfig(char *pFileName, int *feedid, char *key, char *feed_name, char *field0_name, char *field1_name);
 
 int main(int argc, char **argv) {
 	
 	int dhtpin = PIN_DHT;
 	int ledpin = PIN_LED;
-	float humid0, temp0;
+	float humid0, temp0, ahumid, atemp;
 	
 	int feedid = 0;
-        char key[100];
-        char feed_name[100];
+	char key[100];
+	char feed_name[100];
+	char field0_name[100]; 
+	char field1_name[100];
 
 	char pFileName[]="config.ini";
-	readconfig(pFileName, &feedid, key, feed_name);
+	readconfig(pFileName, &feedid, key, feed_name, field0_name, field1_name);
 
 	if (!bcm2835_init())
 		return 1;
@@ -51,10 +53,17 @@ int main(int argc, char **argv) {
 	printf("Using pin #%d\n", dhtpin);
 	
 	while(1) {
-		readDHT(dhtpin, &humid0, &temp0);
-		cosmput(&humid0, &temp0, &feedid, key, feed_name);
-		printf("Temp: %0.1f Humid: %0.1f\n", temp0, humid0);
-		sleep(1);
+		ahumid = atemp = 0.0;
+		for (int i=0; i<5; i++) {	// Mittelwert bilden, um "zittern" der Kurve zu minimieren
+			readDHT(dhtpin, &humid0, &temp0);
+			ahumid = ahumid + humid0;
+			atemp = atemp + temp0;
+			sleep(1);			
+		}
+		ahumid = ahumid / 5;
+		atemp = atemp / 5;
+		printf("Temp: %0.1f Humid: %0.1f\n", atemp, ahumid);				
+		cosmput(ahumid, atemp, &feedid, key, feed_name, field0_name, field1_name);
 	}
 	
 	bcm2835_gpio_fsel(ledpin, BCM2835_GPIO_FSEL_OUTP);
@@ -117,9 +126,8 @@ int readDHT(int pin, float *humid0, float *temp0) {
 		printf("bit %d: %d\n", i-3, bits[i]);
     		printf("bit %d: %d (%d)\n", i-2, bits[i+1], bits[i+1] > 200);
   	}
-#endif
-
   	printf("Data (%d): 0x%x 0x%x 0x%x 0x%x 0x%x\n", j, data[0], data[1], data[2], data[3], data[4]);
+#endif
 
   	if ((j >= 39) && (data[4] == ((data[0] + data[1] + data[2] + data[3]) & 0xFF)) ) {	// yay!
 		float f, h;
@@ -139,7 +147,7 @@ int readDHT(int pin, float *humid0, float *temp0) {
   	return 0;
 }
 
-int cosmput(float *humid0, float *temp0, int *feedid, char *key, char *feed_name) {
+int cosmput(float humid, float temp, int *feedid, char *key, char *feed_name, char *field0_name, char *field1_name) {
 
 	CURL *curl;
 	CURLcode res;
@@ -149,9 +157,8 @@ int cosmput(float *humid0, float *temp0, int *feedid, char *key, char *feed_name
 	char url[50];
 	sprintf(url, "http://api.cosm.com/v2/feeds/%d.json", *feedid);
 	
-	char payload[160];
-	sprintf(payload, "{\"title\":\"%s\",\"version\":\"1.0.0\",\"datastreams\":[{\"id\":\"humid0\",\"current_value\":%0.1f},{\"id\":\"temp0\",\"current_value\":%0.1f}]}", feed_name, *humid0, *temp0);
-
+	char payload[200];
+	sprintf(payload, "{\"title\":\"%s\",\"version\":\"1.0.0\",\"datastreams\":[{\"id\":\"%s\",\"current_value\":%0.1f},{\"id\":\"%s\",\"current_value\":%0.1f}]}", feed_name, field0_name, humid, field1_name, temp);
 	struct curl_slist *header=NULL;
 	header = curl_slist_append(header, xapikey);
 
@@ -175,7 +182,7 @@ int cosmput(float *humid0, float *temp0, int *feedid, char *key, char *feed_name
 	return 0;
 }
 
-int readconfig(char *pFileName, int *feedid, char *key, char *feed_name) {
+int readconfig(char *pFileName, int *feedid, char *key, char *feed_name, char *field0_name, char *field1_name) {
 	char buffer[1024];
 	char label[120];
 	char value[100];
@@ -196,10 +203,18 @@ int readconfig(char *pFileName, int *feedid, char *key, char *feed_name) {
 			if (sscanf(buffer, "%[^'=']=%[^'\n']%s", &label, &value) >= 2){
 				if (strcmp(label, "FEEDID") == 0)
 					*feedid = atoi(value);
+					
 				if (strcmp(label, "KEY") == 0)
 					sprintf(key, "%s", value);
+					
 				if (strcmp(label, "FEED_NAME") == 0) 
 					sprintf(feed_name, "%s", value);
+					
+				if (strcmp(label, "FIELD0_NAME") == 0) 
+					sprintf(field0_name, "%s", value);
+					
+				if (strcmp(label, "FIELD1_NAME") == 0) 
+					sprintf(field1_name, "%s", value);
 			}
 		}
 	}
